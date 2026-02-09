@@ -1,2 +1,8 @@
 .idea
-data
+data/*
+!data/.gitkeep
+config/*
+!config/example.json
+runs/*
+!runs/.gitkeep
+src/__pycache__

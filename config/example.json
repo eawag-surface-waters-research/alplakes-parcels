@@ -1,0 +1,12 @@
+{
+  "file": "/home/username/parcels/data/delft3d-flow/geneva/20260208.nc",
+  "model_type": "delft3d-flow",
+  "particles": {
+    "outputdt": 3600,
+    "runtime": 43200,
+    "dt": 300,
+    "data": [
+      ["2026-02-09T06:00:00.00", 531549, 145030, -1]
+    ]
+  }
+}

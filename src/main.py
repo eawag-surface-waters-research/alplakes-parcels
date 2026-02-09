@@ -1,56 +1,68 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
 import json
-import time
-import requests
 import parcels
 import argparse
 import numpy as np
-import importlib
-import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
+from datetime import timedelta
+import warnings
+warnings.filterwarnings('ignore', message='.*where.*out.*')
 
 import functions
 
-def main(params):
-
+def main(run_id, file, model_type, particles):
     fieldset_loaders = {
-        "delft3d-flow": functions.load_delf3d_fieldset
+        "delft3d-flow": functions.load_delf3d_fieldset,
+        "alplakes-mitgcm": functions.load_alplakes_mitgcm_fieldset
     }
 
-    file = params['file']
+    run_folder = os.path.join(os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), "..")), "runs", run_id)
+    print("Creating run folder {}".format(run_folder))
+    os.makedirs(run_folder, exist_ok=True)
 
-    if params["type"] == "delft3d-flow":
-        converted_file = params["file"].replace(".nc", "_parcels.nc")
+    if model_type == "delft3d-flow":
+        converted_file = os.path.join(run_folder, os.path.basename(file).replace(".nc", "_parcels.nc"))
         if not os.path.isfile(converted_file):
             functions.convert_delft3d_to_parcels(file, converted_file)
         file = converted_file
 
-    if params["type"] in fieldset_loaders:
-        fieldset = fieldset_loaders[params["type"]](file)
+    if model_type in fieldset_loaders:
+        fieldset = fieldset_loaders[model_type](file)
+    else:
+        raise ValueError("Unknown model type {}".format(model_type))
 
-    pset = parcels.ParticleSet(
-         fieldset=fieldset,
-         pclass=parcels.JITParticle,
-         lon=np.array([531549]),       # x in meters
-         lat=np.array([145030]),       # y in meters
-         depth=np.array([-1]),     # depth (matching ZK_LYR convention)
-     )
+    print("Lon:", fieldset.U.grid.lon.min(), fieldset.U.grid.lon.max())
+    print("Lat:", fieldset.U.grid.lat.min(), fieldset.U.grid.lat.max())
 
-    output_file = pset.ParticleFile(name='particle_tracks.zarr', outputdt=timedelta(hours=1))
-    pset.execute(
+    p = np.array(particles["data"])
+    time = np.array(p[:, 0], dtype='datetime64')
+
+    pest = parcels.ParticleSet(
+        fieldset=fieldset,
+        pclass=parcels.JITParticle,
+        time=time,
+        lon=p[:, 1],
+        lat=p[:, 2],
+        depth=p[:, 3]
+    )
+
+    output_file = pest.ParticleFile(name=os.path.join(run_folder, 'particle_tracks.zarr'),
+                                    outputdt=timedelta(seconds=particles["outputdt"]))
+    pest.execute(
          parcels.AdvectionRK4_3D,
-         runtime=timedelta(minutes=20),
-         dt=timedelta(minutes=5),
+         runtime=timedelta(seconds=particles["runtime"]),
+         dt=timedelta(seconds=particles["dt"]),
          output_file=output_file
      )
 
-
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--file', '-f', help="Path to input file", type=str, required=True)
-    parser.add_argument('--type', '-t', help="Type of model", choices=['delft3d-flow'], required=True)
+    parser.add_argument('--config', '-c', help="Config file name", required=True)
     args = parser.parse_args()
-    main(vars(args))
+    folder = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), ".."))
+    config_file = os.path.join(folder, "config", args.config + ".json")
+    print("Loading config file {}".format(config_file))
+    with open(config_file, 'r') as f:
+        data = json.load(f)
+    main(args.config, data["file"], data["model_type"], data["particles"])
