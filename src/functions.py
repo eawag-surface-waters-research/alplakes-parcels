@@ -77,7 +77,7 @@ def fill_grid_coords(xcor, ycor):
     return xf, yf
 
 
-def convert_delft3d_to_parcels(input_file, output_file, plot_grid=True):
+def convert_delft3d_to_parcels(input_file, output_file, plot_grid=False):
     print(f"Reading {input_file}...")
     ds = xr.open_dataset(input_file)
     xcor = ds['XCOR'].values

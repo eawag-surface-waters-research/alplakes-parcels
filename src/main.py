@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore', message='.*where.*out.*')
 
 import functions
 
-def main(run_id, file, model_type, particles):
+def main(run_id, file, model_type, particles, plot=False, grid=False):
     fieldset_loaders = {
         "delft3d-flow": functions.load_delf3d_fieldset,
         "alplakes-mitgcm": functions.load_alplakes_mitgcm_fieldset
@@ -24,16 +24,13 @@ def main(run_id, file, model_type, particles):
     if model_type == "delft3d-flow":
         converted_file = os.path.join(run_folder, os.path.basename(file).replace(".nc", "_parcels.nc"))
         if not os.path.isfile(converted_file):
-            functions.convert_delft3d_to_parcels(file, converted_file)
+            functions.convert_delft3d_to_parcels(file, converted_file, plot_grid=grid)
         file = converted_file
 
     if model_type in fieldset_loaders:
         fieldset = fieldset_loaders[model_type](file)
     else:
         raise ValueError("Unknown model type {}".format(model_type))
-
-    print("Lon:", fieldset.U.grid.lon.min(), fieldset.U.grid.lon.max())
-    print("Lat:", fieldset.U.grid.lat.min(), fieldset.U.grid.lat.max())
 
     p = np.array(particles["data"])
     time = np.array(p[:, 0], dtype='datetime64')
@@ -47,22 +44,30 @@ def main(run_id, file, model_type, particles):
         depth=p[:, 3]
     )
 
-    output_file = pest.ParticleFile(name=os.path.join(run_folder, 'particle_tracks.zarr'),
-                                    outputdt=timedelta(seconds=particles["outputdt"]))
-    pest.execute(
-         parcels.AdvectionRK4_3D,
-         runtime=timedelta(seconds=particles["runtime"]),
-         dt=timedelta(seconds=particles["dt"]),
-         output_file=output_file
-     )
+    particle_file = os.path.join(run_folder, 'particle_tracks.zarr')
+    if not os.path.exists(particle_file):
+        output_file = pest.ParticleFile(name=particle_file, outputdt=timedelta(seconds=particles["outputdt"]))
+        pest.execute(
+             parcels.AdvectionRK4_3D,
+             runtime=timedelta(seconds=particles["runtime"]),
+             dt=timedelta(seconds=particles["dt"]),
+             output_file=output_file
+         )
+    else:
+        print("Particle tracks file {} already exists".format(particle_file))
+
+    if plot:
+        print("Plot results")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', '-c', help="Config file name", required=True)
+    parser.add_argument('--plot', '-p', help="Plot results", action='store_true')
+    parser.add_argument('--grid', '-g', help="Plot Delft3D grid interpolation", action='store_true')
     args = parser.parse_args()
     folder = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), ".."))
     config_file = os.path.join(folder, "config", args.config + ".json")
     print("Loading config file {}".format(config_file))
     with open(config_file, 'r') as f:
         data = json.load(f)
-    main(args.config, data["file"], data["model_type"], data["particles"])
+    main(args.config, data["file"], data["model_type"], data["particles"], plot=args.plot, grid=args.grid)
