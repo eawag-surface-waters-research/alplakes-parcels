@@ -1,0 +1,9 @@
+name: parcels
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - parcels=3.1
+  - trajan
+  - cartopy
+  - jupyter

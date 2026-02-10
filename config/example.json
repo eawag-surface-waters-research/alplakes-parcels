@@ -3,10 +3,16 @@
   "model_type": "delft3d-flow",
   "particles": {
     "outputdt": 3600,
-    "runtime": 43200,
-    "dt": 300,
-    "data": [
-      ["2026-02-09T06:00:00.00", 531549, 145030, -1]
-    ]
+    "runtime": 129600,
+    "dt": 60,
+    "data": {
+      "type": "circle",
+      "center": [519839, 137303],
+      "min_z": 0.5,
+      "max_z": 1,
+      "number": 10,
+      "radius": 500,
+      "time": "2025-12-14T06:00:00.00"
+    }
   }
 }
