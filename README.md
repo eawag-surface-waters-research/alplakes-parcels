@@ -2,6 +2,8 @@
 
 Lagrangian particle tracking simulations for Alpine lakes using [OceanParcels](https://oceanparcels.org/). Simulates water particle trajectories in 3D velocity fields from hydrodynamic models (Delft3D-FLOW and MITGCM).
 
+⚠️ This repository is under active development. This will replace the existing particle tracking framework for Alplakes available [here](https://github.com/eawag-surface-waters-research/alplakes-particletracking).
+
 ## Setup
 
 Create the conda environment:
